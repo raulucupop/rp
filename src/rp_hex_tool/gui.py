@@ -17,7 +17,7 @@ from .models import Project
 class HexGuiApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("RP HEX Creator - Sample Parts SN")
+        self.root.title("MB EA L EIS - Sample Parts - EOL Data Generator")
         self.project: Project | None = None
         self.field_vars: dict[str, tk.StringVar] = {}
 
@@ -49,7 +49,7 @@ class HexGuiApp:
 
         ttk.Checkbutton(
             top,
-            text="Double for shadow memory (+0x02000000)",
+            text="Double the data to fill the shadow memory too",
             variable=self.shadow_memory,
         ).grid(row=3, column=0, columnspan=2, sticky="w")
 
@@ -67,6 +67,10 @@ class HexGuiApp:
 
         self.preview_text = tk.Text(self.root, height=12)
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+        footer = ttk.Frame(self.root, padding=(10, 0, 10, 6))
+        footer.pack(fill=tk.X)
+        ttk.Label(footer, text="© Copyright RP 2026").pack(anchor="e")
 
     def _try_load_default_project(self) -> None:
         if Path(self.project_path.get()).exists():
