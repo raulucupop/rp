@@ -115,14 +115,40 @@ def parse_memory(text: str) -> dict[int, int]:
     return parse_auto(text)
 
 
-def generate_hex(project: Project, values: dict[str, str], fmt: FileFormat = "ihex") -> tuple[str, list[str]]:
+def _with_shadow_memory(memory: dict[int, int], shadow_offset: int | None) -> dict[int, int]:
+    if shadow_offset is None:
+        return memory
+    out = dict(memory)
+    for addr, value in memory.items():
+        shadow_addr = addr + shadow_offset
+        existing = out.get(shadow_addr)
+        if existing is not None and existing != value:
+            raise ValueError(f"shadow memory collision at {shadow_addr:#x}")
+        out[shadow_addr] = value
+    return out
+
+
+def generate_hex(
+    project: Project,
+    values: dict[str, str],
+    fmt: FileFormat = "ihex",
+    shadow_offset: int | None = None,
+) -> tuple[str, list[str]]:
     memory, warnings = fields_to_memory(project, values)
+    memory = _with_shadow_memory(memory, shadow_offset)
     return serialize_memory(memory, fmt, project.record_length), warnings
 
 
-def patch_hex(project: Project, template_hex: str, values: dict[str, str], fmt: FileFormat = "ihex") -> tuple[str, list[str]]:
+def patch_hex(
+    project: Project,
+    template_hex: str,
+    values: dict[str, str],
+    fmt: FileFormat = "ihex",
+    shadow_offset: int | None = None,
+) -> tuple[str, list[str]]:
     base = parse_memory(template_hex)
     patch_mem, warnings = fields_to_memory(project, values)
+    patch_mem = _with_shadow_memory(patch_mem, shadow_offset)
     base.update(patch_mem)
     return serialize_memory(base, fmt, project.record_length), warnings
 

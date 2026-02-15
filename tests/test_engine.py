@@ -120,3 +120,17 @@ def test_hex_input_uses_byte_length_not_char_length():
     out_1, _ = generate_hex(project, {"vhl_wcc": "01"})
     mem_1 = parse_memory(out_1)
     assert mem_1[0x00] == 0x01
+
+
+def test_generate_with_shadow_memory_duplicates_payload():
+    project = _project()
+    values = {"serial": "AB12", "hw": "A1", "sw": "B2"}
+    shadow_offset = 0x02000000
+
+    out, _ = generate_hex(project, values, shadow_offset=shadow_offset)
+    mem = parse_memory(out)
+
+    serial_bytes = b"AB12    "
+    for i, b in enumerate(serial_bytes):
+        assert mem[0x10010 + i] == b
+        assert mem[0x10010 + shadow_offset + i] == b

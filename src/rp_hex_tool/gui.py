@@ -29,6 +29,7 @@ class HexGuiApp:
         self.output_path = tk.StringVar(value="output.hex")
         self.config_mode = tk.StringVar(value="merge")
         self.output_format = tk.StringVar(value="ihex")
+        self.shadow_memory = tk.BooleanVar(value=False)
 
         self._build_layout()
         self._try_load_default_project()
@@ -58,6 +59,12 @@ class HexGuiApp:
         fmt = ttk.Combobox(top, textvariable=self.output_format, values=["ihex", "srec"], state="readonly", width=10)
         fmt.grid(row=4, column=1, sticky="w")
         fmt.current(0)
+
+        ttk.Checkbutton(
+            top,
+            text="Double for shadow memory (+0x02000000)",
+            variable=self.shadow_memory,
+        ).grid(row=5, column=0, columnspan=2, sticky="w")
 
         top.columnconfigure(1, weight=1)
 
@@ -159,6 +166,9 @@ class HexGuiApp:
     def _collect_values(self) -> dict[str, str]:
         return {key: var.get() for key, var in self.field_vars.items()}
 
+    def _shadow_offset(self) -> int | None:
+        return 0x02000000 if self.shadow_memory.get() else None
+
     def load_values_config(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*")])
         if not path:
@@ -178,7 +188,12 @@ class HexGuiApp:
             return
         values = self._collect_values()
         try:
-            text, warnings = generate_hex(self.project, values, fmt=self.output_format.get())
+            text, warnings = generate_hex(
+                self.project,
+                values,
+                fmt=self.output_format.get(),
+                shadow_offset=self._shadow_offset(),
+            )
         except Exception as exc:
             messagebox.showerror("Preview error", str(exc))
             return
@@ -192,7 +207,12 @@ class HexGuiApp:
             return
         values = self._collect_values()
         try:
-            text, warnings = generate_hex(self.project, values, fmt=self.output_format.get())
+            text, warnings = generate_hex(
+                self.project,
+                values,
+                fmt=self.output_format.get(),
+                shadow_offset=self._shadow_offset(),
+            )
             Path(self.output_path.get()).write_text(text, encoding="utf-8")
         except Exception as exc:
             messagebox.showerror("Generate error", str(exc))
@@ -208,7 +228,13 @@ class HexGuiApp:
         values = self._collect_values()
         try:
             template = Path(self.template_path.get()).read_text(encoding="utf-8")
-            text, warnings = patch_hex(self.project, template, values, fmt=self.output_format.get())
+            text, warnings = patch_hex(
+                self.project,
+                template,
+                values,
+                fmt=self.output_format.get(),
+                shadow_offset=self._shadow_offset(),
+            )
             Path(self.output_path.get()).write_text(text, encoding="utf-8")
         except Exception as exc:
             messagebox.showerror("Patch error", str(exc))
