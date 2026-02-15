@@ -93,3 +93,30 @@ def test_patch_intel_template_and_emit_srec():
 
     check = verify(project, values, out_srec)
     assert all(v == "PASS" for v in check.values())
+
+
+def test_hex_input_uses_byte_length_not_char_length():
+    project = Project(
+        schemaVersion=1,
+        name="hex-input",
+        record_length=16,
+        fields=[
+            FieldDef(
+                name="VHL WCC",
+                key="vhl_wcc",
+                address=0x00,
+                length_bytes=1,
+                input_format="hex",
+                trim_rule="none",
+                required=True,
+            )
+        ],
+    )
+
+    out_0, _ = generate_hex(project, {"vhl_wcc": "0x0"})
+    mem_0 = parse_memory(out_0)
+    assert mem_0[0x00] == 0x00
+
+    out_1, _ = generate_hex(project, {"vhl_wcc": "01"})
+    mem_1 = parse_memory(out_1)
+    assert mem_1[0x00] == 0x01

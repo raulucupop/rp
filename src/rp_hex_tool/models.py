@@ -11,6 +11,7 @@ PaddingByte = int
 Encoding = Literal["ascii", "utf-8"]
 PadDirection = Literal["left", "right"]
 TrimRule = Literal["strip_padding", "stop_at_0x00", "none"]
+InputFormat = Literal["ascii", "hex"]
 
 
 @dataclass
@@ -24,12 +25,28 @@ class FieldDef:
     padding: PaddingByte = 0x00
     pad_direction: PadDirection = "right"
     trim_rule: TrimRule = "strip_padding"
+    input_format: InputFormat = "ascii"
     required: bool = False
     default_value: str | None = None
     allow_truncate: bool = False
 
     def validate_value(self, value: str) -> list[str]:
         errors: list[str] = []
+        if self.input_format == "hex":
+            raw = value.strip()
+            if raw.lower().startswith("0x"):
+                raw = raw[2:]
+            if raw:
+                if any(ch not in "0123456789abcdefABCDEF" for ch in raw):
+                    errors.append("must be valid hex")
+                    return errors
+                if len(raw) % 2 == 1:
+                    raw = "0" + raw
+                byte_len = len(raw) // 2
+                if byte_len > self.length_bytes and not self.allow_truncate:
+                    errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
+            return errors
+
         if self.allowed_charset == "alphanumeric" and not re.fullmatch(r"[A-Za-z0-9]*", value):
             errors.append("must be alphanumeric")
         elif self.allowed_charset == "printable_ascii" and any(ord(ch) < 0x20 or ord(ch) > 0x7E for ch in value):

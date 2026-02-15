@@ -27,7 +27,16 @@ def setup_logger(log_path: Path) -> logging.Logger:
 
 def encode_field(field: FieldDef, value: str) -> tuple[bytes, list[str]]:
     warnings: list[str] = []
-    encoded = value.encode(field.encoding)
+    if field.input_format == "hex":
+        raw = value.strip()
+        if raw.lower().startswith("0x"):
+            raw = raw[2:]
+        if len(raw) % 2 == 1:
+            raw = "0" + raw
+        encoded = bytes.fromhex(raw) if raw else b""
+    else:
+        encoded = value.encode(field.encoding)
+
     if len(encoded) > field.length_bytes:
         if field.allow_truncate:
             warnings.append(f"{field.key}: truncated from {len(encoded)} to {field.length_bytes} bytes")
@@ -47,6 +56,8 @@ def decode_field(field: FieldDef, raw: bytes) -> str:
         raw = raw.split(b"\x00", 1)[0]
     elif field.trim_rule == "strip_padding":
         raw = raw.rstrip(bytes([field.padding])) if field.pad_direction == "right" else raw.lstrip(bytes([field.padding]))
+    if field.input_format == "hex":
+        return raw.hex().upper()
     return raw.decode(field.encoding, errors="replace")
 
 
