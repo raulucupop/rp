@@ -39,7 +39,8 @@ class HexGuiApp:
 
         ttk.Label(top, text="Project:").grid(row=0, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.project_path, width=60).grid(row=0, column=1, sticky="ew")
-        ttk.Button(top, text="Load Project", command=self.load_project).grid(row=0, column=2, padx=4)
+        ttk.Button(top, text="Browse", command=self.browse_project).grid(row=0, column=2, padx=4)
+        ttk.Button(top, text="Load Project", command=self.load_project).grid(row=0, column=3, padx=4)
 
         ttk.Label(top, text="Template file (patch mode):").grid(row=1, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.template_path, width=60).grid(row=1, column=1, sticky="ew")
@@ -84,6 +85,11 @@ class HexGuiApp:
         if Path(self.project_path.get()).exists():
             self.load_project()
 
+    def browse_project(self) -> None:
+        path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*")])
+        if path:
+            self.project_path.set(path)
+
     def browse_template(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("HEX/SREC files", "*.hex *.srec"), ("All files", "*")])
         if path:
@@ -102,8 +108,24 @@ class HexGuiApp:
             self.input_hex_path.set(path)
 
     def load_project(self) -> None:
+        raw_path = self.project_path.get().strip()
+        if not raw_path:
+            messagebox.showerror("Project load error", "Project path is empty. Select a project JSON file.")
+            return
+
+        project_path = Path(raw_path).expanduser()
+        if project_path.is_dir():
+            messagebox.showerror(
+                "Project load error",
+                f"'{project_path}' is a folder. Please select a project JSON file.",
+            )
+            return
+        if not project_path.exists():
+            messagebox.showerror("Project load error", f"Project file not found: {project_path}")
+            return
+
         try:
-            self.project = load_project(self.project_path.get())
+            self.project = load_project(str(project_path))
         except Exception as exc:
             messagebox.showerror("Project load error", str(exc))
             return
