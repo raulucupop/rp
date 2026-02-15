@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='MB-EA-L-EIS-EOL-Data-Generator',
+    name='MB-EA-L-EIS-EOL-Data-Generator-v2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
