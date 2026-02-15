@@ -9,10 +9,10 @@ from .engine import (
     load_config,
     load_project,
     patch_hex,
+    parse_memory,
     read_fields_from_memory,
     verify,
 )
-from .hexfile import parse_intel_hex
 from .models import Project
 
 
@@ -28,6 +28,7 @@ class HexGuiApp:
         self.input_hex_path = tk.StringVar(value="")
         self.output_path = tk.StringVar(value="output.hex")
         self.config_mode = tk.StringVar(value="merge")
+        self.output_format = tk.StringVar(value="ihex")
 
         self._build_layout()
         self._try_load_default_project()
@@ -40,17 +41,22 @@ class HexGuiApp:
         ttk.Entry(top, textvariable=self.project_path, width=60).grid(row=0, column=1, sticky="ew")
         ttk.Button(top, text="Load Project", command=self.load_project).grid(row=0, column=2, padx=4)
 
-        ttk.Label(top, text="Template HEX (patch mode):").grid(row=1, column=0, sticky="w")
+        ttk.Label(top, text="Template file (patch mode):").grid(row=1, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.template_path, width=60).grid(row=1, column=1, sticky="ew")
         ttk.Button(top, text="Browse", command=self.browse_template).grid(row=1, column=2, padx=4)
 
-        ttk.Label(top, text="Output HEX:").grid(row=2, column=0, sticky="w")
+        ttk.Label(top, text="Output file:").grid(row=2, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.output_path, width=60).grid(row=2, column=1, sticky="ew")
         ttk.Button(top, text="Browse", command=self.browse_output).grid(row=2, column=2, padx=4)
 
-        ttk.Label(top, text="Readback HEX:").grid(row=3, column=0, sticky="w")
+        ttk.Label(top, text="Readback file:").grid(row=3, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.input_hex_path, width=60).grid(row=3, column=1, sticky="ew")
         ttk.Button(top, text="Browse", command=self.browse_input_hex).grid(row=3, column=2, padx=4)
+
+        ttk.Label(top, text="Output format:").grid(row=4, column=0, sticky="w")
+        fmt = ttk.Combobox(top, textvariable=self.output_format, values=["ihex", "srec"], state="readonly", width=10)
+        fmt.grid(row=4, column=1, sticky="w")
+        fmt.current(0)
 
         top.columnconfigure(1, weight=1)
 
@@ -79,17 +85,19 @@ class HexGuiApp:
             self.load_project()
 
     def browse_template(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("HEX files", "*.hex"), ("All files", "*")])
+        path = filedialog.askopenfilename(filetypes=[("HEX/SREC files", "*.hex *.srec"), ("All files", "*")])
         if path:
             self.template_path.set(path)
 
     def browse_output(self) -> None:
-        path = filedialog.asksaveasfilename(defaultextension=".hex", filetypes=[("HEX files", "*.hex")])
+        path = filedialog.asksaveasfilename(
+            filetypes=[("HEX files", "*.hex"), ("S-record files", "*.srec"), ("All files", "*")]
+        )
         if path:
             self.output_path.set(path)
 
     def browse_input_hex(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("HEX files", "*.hex"), ("All files", "*")])
+        path = filedialog.askopenfilename(filetypes=[("HEX/SREC files", "*.hex *.srec"), ("All files", "*")])
         if path:
             self.input_hex_path.set(path)
 
@@ -148,7 +156,7 @@ class HexGuiApp:
             return
         values = self._collect_values()
         try:
-            text, warnings = generate_hex(self.project, values)
+            text, warnings = generate_hex(self.project, values, fmt=self.output_format.get())
         except Exception as exc:
             messagebox.showerror("Preview error", str(exc))
             return
@@ -162,7 +170,7 @@ class HexGuiApp:
             return
         values = self._collect_values()
         try:
-            text, warnings = generate_hex(self.project, values)
+            text, warnings = generate_hex(self.project, values, fmt=self.output_format.get())
             Path(self.output_path.get()).write_text(text, encoding="utf-8")
         except Exception as exc:
             messagebox.showerror("Generate error", str(exc))
@@ -178,7 +186,7 @@ class HexGuiApp:
         values = self._collect_values()
         try:
             template = Path(self.template_path.get()).read_text(encoding="utf-8")
-            text, warnings = patch_hex(self.project, template, values)
+            text, warnings = patch_hex(self.project, template, values, fmt=self.output_format.get())
             Path(self.output_path.get()).write_text(text, encoding="utf-8")
         except Exception as exc:
             messagebox.showerror("Patch error", str(exc))
@@ -193,7 +201,7 @@ class HexGuiApp:
             return
         try:
             text = Path(self.input_hex_path.get()).read_text(encoding="utf-8")
-            memory = parse_intel_hex(text)
+            memory = parse_memory(text)
             values, status = read_fields_from_memory(self.project, memory)
         except Exception as exc:
             messagebox.showerror("Readback error", str(exc))

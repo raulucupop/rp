@@ -9,7 +9,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-from .hexfile import parse_intel_hex, write_intel_hex
+from .hexfile import FileFormat, parse_auto, write_intel_hex, write_srec
 from .models import DataConfig, FieldDef, Project, load_json
 
 
@@ -92,20 +92,32 @@ def read_fields_from_memory(project: Project, memory: dict[int, int]) -> tuple[d
     return values, status
 
 
-def generate_hex(project: Project, values: dict[str, str]) -> tuple[str, list[str]]:
+def serialize_memory(memory: dict[int, int], fmt: FileFormat, record_length: int) -> str:
+    if fmt == "ihex":
+        return write_intel_hex(memory, record_length)
+    if fmt == "srec":
+        return write_srec(memory, record_length)
+    raise ValueError(f"unsupported format: {fmt}")
+
+
+def parse_memory(text: str) -> dict[int, int]:
+    return parse_auto(text)
+
+
+def generate_hex(project: Project, values: dict[str, str], fmt: FileFormat = "ihex") -> tuple[str, list[str]]:
     memory, warnings = fields_to_memory(project, values)
-    return write_intel_hex(memory, project.record_length), warnings
+    return serialize_memory(memory, fmt, project.record_length), warnings
 
 
-def patch_hex(project: Project, template_hex: str, values: dict[str, str]) -> tuple[str, list[str]]:
-    base = parse_intel_hex(template_hex)
+def patch_hex(project: Project, template_hex: str, values: dict[str, str], fmt: FileFormat = "ihex") -> tuple[str, list[str]]:
+    base = parse_memory(template_hex)
     patch_mem, warnings = fields_to_memory(project, values)
     base.update(patch_mem)
-    return write_intel_hex(base, project.record_length), warnings
+    return serialize_memory(base, fmt, project.record_length), warnings
 
 
 def verify(project: Project, values: dict[str, str], output_hex: str) -> dict[str, Literal["PASS", "FAIL"]]:
-    memory = parse_intel_hex(output_hex)
+    memory = parse_memory(output_hex)
     expected, _ = fields_to_memory(project, values)
     result: dict[str, Literal["PASS", "FAIL"]] = {}
     for field in project.fields:
@@ -116,8 +128,8 @@ def verify(project: Project, values: dict[str, str], output_hex: str) -> dict[st
 
 
 def diff_ranges(project: Project, left_hex: str, right_hex: str) -> dict[str, list[tuple[int, int, int]]]:
-    left = parse_intel_hex(left_hex)
-    right = parse_intel_hex(right_hex)
+    left = parse_memory(left_hex)
+    right = parse_memory(right_hex)
     diff: dict[str, list[tuple[int, int, int]]] = {}
     for field in project.fields:
         entries = []

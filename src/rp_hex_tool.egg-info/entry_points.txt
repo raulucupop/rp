@@ -1,0 +1,3 @@
+[console_scripts]
+rp-hex = rp_hex_tool.cli:main
+rp-hex-gui = rp_hex_tool.gui:main

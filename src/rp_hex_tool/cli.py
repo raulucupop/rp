@@ -15,11 +15,11 @@ from .engine import (
     load_config,
     load_project,
     patch_hex,
+    parse_memory,
     read_fields_from_memory,
     setup_logger,
     verify,
 )
-from .hexfile import parse_intel_hex
 
 
 def _load_values(config_path: str | None) -> dict[str, str]:
@@ -31,7 +31,7 @@ def _load_values(config_path: str | None) -> dict[str, str]:
 def cmd_generate(args: argparse.Namespace) -> int:
     project = load_project(args.project)
     values = _load_values(args.config)
-    content, warnings = generate_hex(project, values)
+    content, warnings = generate_hex(project, values, fmt=args.format)
     Path(args.output).write_text(content, encoding="utf-8")
     for w in warnings:
         print(f"WARN: {w}")
@@ -43,7 +43,7 @@ def cmd_patch(args: argparse.Namespace) -> int:
     project = load_project(args.project)
     values = _load_values(args.config)
     template = Path(args.template or project.template_hex).read_text(encoding="utf-8")
-    content, warnings = patch_hex(project, template, values)
+    content, warnings = patch_hex(project, template, values, fmt=args.format)
     Path(args.output).write_text(content, encoding="utf-8")
     for w in warnings:
         print(f"WARN: {w}")
@@ -53,7 +53,7 @@ def cmd_patch(args: argparse.Namespace) -> int:
 
 def cmd_readback(args: argparse.Namespace) -> int:
     project = load_project(args.project)
-    memory = parse_intel_hex(Path(args.hex).read_text(encoding="utf-8"))
+    memory = parse_memory(Path(args.hex).read_text(encoding="utf-8"))
     values, status = read_fields_from_memory(project, memory)
     for field in project.fields:
         print(f"{field.key}: {status[field.key]} | {values.get(field.key, '')}")
@@ -97,7 +97,11 @@ def cmd_batch(args: argparse.Namespace) -> int:
         file_name = args.naming.format(date=ts, idx=idx, **item)
         output = out_dir / file_name
         try:
-            content, warnings = patch_hex(project, template, item) if args.mode == "patch" else generate_hex(project, item)
+            content, warnings = (
+                patch_hex(project, template, item, fmt=args.format)
+                if args.mode == "patch"
+                else generate_hex(project, item, fmt=args.format)
+            )
             output.write_text(content, encoding="utf-8")
             success += 1
             logger.info("batch_success idx=%s output=%s warnings=%s", idx, output, warnings)
@@ -131,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--project", required=True)
     g.add_argument("--config")
     g.add_argument("--output", required=True)
+    g.add_argument("--format", choices=["ihex", "srec"], default="ihex")
     g.set_defaults(func=cmd_generate)
 
     p = sub.add_parser("patch")
@@ -138,6 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config")
     p.add_argument("--template")
     p.add_argument("--output", required=True)
+    p.add_argument("--format", choices=["ihex", "srec"], default="ihex")
     p.set_defaults(func=cmd_patch)
 
     r = sub.add_parser("readback")
@@ -163,6 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--output-dir", required=True)
     b.add_argument("--mode", choices=["generate", "patch"], default="generate")
     b.add_argument("--template")
+    b.add_argument("--format", choices=["ihex", "srec"], default="ihex")
     b.add_argument("--naming", default="{idx}_{date}.hex")
     b.add_argument("--log", default="rp_hex.log")
     b.set_defaults(func=cmd_batch)
