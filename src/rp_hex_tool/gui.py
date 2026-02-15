@@ -6,9 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .engine import (
     generate_hex,
-    load_config,
     load_project,
-    patch_hex,
     parse_memory,
     read_fields_from_memory,
     verify,
@@ -24,10 +22,7 @@ class HexGuiApp:
         self.field_vars: dict[str, tk.StringVar] = {}
 
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
-        self.template_path = tk.StringVar(value="")
         self.input_hex_path = tk.StringVar(value="")
-        self.output_path = tk.StringVar(value="output.hex")
-        self.config_mode = tk.StringVar(value="merge")
         self.output_format = tk.StringVar(value="ihex")
         self.shadow_memory = tk.BooleanVar(value=False)
 
@@ -43,36 +38,22 @@ class HexGuiApp:
         ttk.Button(top, text="Browse", command=self.browse_project).grid(row=0, column=2, padx=4)
         ttk.Button(top, text="Load Project", command=self.load_project).grid(row=0, column=3, padx=4)
 
-        ttk.Label(top, text="Template file (patch mode):").grid(row=1, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.template_path, width=60).grid(row=1, column=1, sticky="ew")
-        ttk.Button(top, text="Browse", command=self.browse_template).grid(row=1, column=2, padx=4)
+        ttk.Label(top, text="Readback file:").grid(row=1, column=0, sticky="w")
+        ttk.Entry(top, textvariable=self.input_hex_path, width=60).grid(row=1, column=1, sticky="ew")
+        ttk.Button(top, text="Browse", command=self.browse_input_hex).grid(row=1, column=2, padx=4)
 
-        ttk.Label(top, text="Output file:").grid(row=2, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.output_path, width=60).grid(row=2, column=1, sticky="ew")
-        ttk.Button(top, text="Browse", command=self.browse_output).grid(row=2, column=2, padx=4)
-
-        ttk.Label(top, text="Readback file:").grid(row=3, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.input_hex_path, width=60).grid(row=3, column=1, sticky="ew")
-        ttk.Button(top, text="Browse", command=self.browse_input_hex).grid(row=3, column=2, padx=4)
-
-        ttk.Label(top, text="Output format:").grid(row=4, column=0, sticky="w")
+        ttk.Label(top, text="Output format:").grid(row=2, column=0, sticky="w")
         fmt = ttk.Combobox(top, textvariable=self.output_format, values=["ihex", "srec"], state="readonly", width=10)
-        fmt.grid(row=4, column=1, sticky="w")
+        fmt.grid(row=2, column=1, sticky="w")
         fmt.current(0)
 
         ttk.Checkbutton(
             top,
             text="Double for shadow memory (+0x02000000)",
             variable=self.shadow_memory,
-        ).grid(row=5, column=0, columnspan=2, sticky="w")
+        ).grid(row=3, column=0, columnspan=2, sticky="w")
 
         top.columnconfigure(1, weight=1)
-
-        cfg_frame = ttk.LabelFrame(self.root, text="Config load mode", padding=8)
-        cfg_frame.pack(fill=tk.X, padx=10)
-        ttk.Radiobutton(cfg_frame, text="Merge (completează doar câmpurile goale)", variable=self.config_mode, value="merge").pack(anchor="w")
-        ttk.Radiobutton(cfg_frame, text="Override (înlocuiește valorile existente)", variable=self.config_mode, value="override").pack(anchor="w")
-        ttk.Button(cfg_frame, text="Load Values Config (JSON)", command=self.load_values_config).pack(anchor="w", pady=(6, 0))
 
         self.form_frame = ttk.LabelFrame(self.root, text="Fields", padding=10)
         self.form_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -81,7 +62,6 @@ class HexGuiApp:
         actions.pack(fill=tk.X)
         ttk.Button(actions, text="Preview", command=self.preview).pack(side=tk.LEFT)
         ttk.Button(actions, text="Generate HEX", command=self.generate).pack(side=tk.LEFT, padx=5)
-        ttk.Button(actions, text="Patch HEX", command=self.patch).pack(side=tk.LEFT, padx=5)
         ttk.Button(actions, text="Readback", command=self.readback).pack(side=tk.LEFT, padx=5)
         ttk.Button(actions, text="Verify", command=self.run_verify).pack(side=tk.LEFT, padx=5)
 
@@ -96,18 +76,6 @@ class HexGuiApp:
         path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*")])
         if path:
             self.project_path.set(path)
-
-    def browse_template(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("HEX/SREC files", "*.hex *.srec"), ("All files", "*")])
-        if path:
-            self.template_path.set(path)
-
-    def browse_output(self) -> None:
-        path = filedialog.asksaveasfilename(
-            filetypes=[("HEX files", "*.hex"), ("S-record files", "*.srec"), ("All files", "*")]
-        )
-        if path:
-            self.output_path.set(path)
 
     def browse_input_hex(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("HEX/SREC files", "*.hex *.srec"), ("All files", "*")])
@@ -169,19 +137,14 @@ class HexGuiApp:
     def _shadow_offset(self) -> int | None:
         return 0x02000000 if self.shadow_memory.get() else None
 
-    def load_values_config(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*")])
-        if not path:
-            return
-        cfg = load_config(path)
-        current = self._collect_values()
-        merged = cfg.merge(current) if self.config_mode.get() == "merge" else {**current, **cfg.values}
-        for key, value in merged.items():
-            if key in self.field_vars:
-                self.field_vars[key].set(value)
-        missing = [k for k in cfg.values if k not in self.field_vars]
-        if missing:
-            messagebox.showwarning("Config warning", f"Keys not in current project: {', '.join(missing)}")
+    def _ask_output_path(self) -> str:
+        if self.output_format.get() == "srec":
+            default_ext = ".srec"
+            filetypes = [("S-record files", "*.srec"), ("HEX files", "*.hex"), ("All files", "*")]
+        else:
+            default_ext = ".hex"
+            filetypes = [("HEX files", "*.hex"), ("S-record files", "*.srec"), ("All files", "*")]
+        return filedialog.asksaveasfilename(defaultextension=default_ext, filetypes=filetypes)
 
     def preview(self) -> None:
         if not self.project:
@@ -206,6 +169,9 @@ class HexGuiApp:
         if not self.project:
             return
         values = self._collect_values()
+        output_path = self._ask_output_path()
+        if not output_path:
+            return
         try:
             text, warnings = generate_hex(
                 self.project,
@@ -213,34 +179,12 @@ class HexGuiApp:
                 fmt=self.output_format.get(),
                 shadow_offset=self._shadow_offset(),
             )
-            Path(self.output_path.get()).write_text(text, encoding="utf-8")
+            Path(output_path).write_text(text, encoding="utf-8")
         except Exception as exc:
             messagebox.showerror("Generate error", str(exc))
             return
         self.preview_text.delete("1.0", "end")
-        self.preview_text.insert("end", f"Generated: {self.output_path.get()}\n")
-        if warnings:
-            self.preview_text.insert("end", "Warnings:\n" + "\n".join(warnings) + "\n")
-
-    def patch(self) -> None:
-        if not self.project:
-            return
-        values = self._collect_values()
-        try:
-            template = Path(self.template_path.get()).read_text(encoding="utf-8")
-            text, warnings = patch_hex(
-                self.project,
-                template,
-                values,
-                fmt=self.output_format.get(),
-                shadow_offset=self._shadow_offset(),
-            )
-            Path(self.output_path.get()).write_text(text, encoding="utf-8")
-        except Exception as exc:
-            messagebox.showerror("Patch error", str(exc))
-            return
-        self.preview_text.delete("1.0", "end")
-        self.preview_text.insert("end", f"Patched: {self.output_path.get()}\n")
+        self.preview_text.insert("end", f"Generated: {output_path}\n")
         if warnings:
             self.preview_text.insert("end", "Warnings:\n" + "\n".join(warnings) + "\n")
 
@@ -266,8 +210,11 @@ class HexGuiApp:
     def run_verify(self) -> None:
         if not self.project:
             return
+        if not self.input_hex_path.get():
+            messagebox.showerror("Verify error", "Select a readback file first.")
+            return
         try:
-            text = Path(self.input_hex_path.get() or self.output_path.get()).read_text(encoding="utf-8")
+            text = Path(self.input_hex_path.get()).read_text(encoding="utf-8")
             result = verify(self.project, self._collect_values(), text)
         except Exception as exc:
             messagebox.showerror("Verify error", str(exc))
