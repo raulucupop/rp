@@ -306,7 +306,7 @@ class HexGuiApp:
             entry.bind("<Return>", self._on_field_enter)
             ttk.Label(
                 self.form_frame,
-                text=f"addr={field.address:#x}, len={field.length_bytes}, charset={field.allowed_charset}",
+                text=f"addr=0x{field.address:X}, len={field.length_bytes}, charset={field.allowed_charset}",
             ).grid(row=row, column=2, sticky="w")
             var.trace_add("write", lambda *_args, f=field, v=var, e=entry: self._validate_live(f, v, e))
             self.field_vars[field.key] = var
