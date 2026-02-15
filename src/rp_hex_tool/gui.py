@@ -394,8 +394,19 @@ class HexGuiApp:
     def readback(self) -> None:
         if not self.project:
             return
+        raw_path = self.input_hex_path.get().strip()
+        if not raw_path:
+            messagebox.showerror("Readback error", "Select a readback file first.")
+            return
+        input_path = Path(raw_path).expanduser()
+        if input_path.is_dir():
+            messagebox.showerror("Readback error", f"'{input_path}' is a folder. Please select a file.")
+            return
+        if not input_path.exists():
+            messagebox.showerror("Readback error", f"Readback file not found: {input_path}")
+            return
         try:
-            text = Path(self.input_hex_path.get()).read_text(encoding="utf-8")
+            text = input_path.read_text(encoding="utf-8")
             memory = parse_memory(text)
             values, status = read_fields_from_memory(self.project, memory)
         except Exception as exc:
