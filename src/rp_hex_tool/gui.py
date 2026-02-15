@@ -1,17 +1,172 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .engine import (
-    generate_hex,
-    load_project,
-    parse_memory,
-    read_fields_from_memory,
-    verify,
-)
-from .models import Project
+try:
+    from .engine import (
+        generate_hex,
+        load_project,
+        parse_memory,
+        read_fields_from_memory,
+        verify,
+    )
+    from .models import Project
+except ImportError:
+    # Support execution as a top-level script in bundled contexts.
+    from rp_hex_tool.engine import (
+        generate_hex,
+        load_project,
+        parse_memory,
+        read_fields_from_memory,
+        verify,
+    )
+    from rp_hex_tool.models import Project
+
+
+_EMBEDDED_SAMPLE_PROJECT_JSON = """
+{
+  "schemaVersion": 1,
+  "name": "Sample HW Layout",
+  "record_length": 16,
+  "memory_limit": 131072,
+  "template_hex": null,
+  "fields": [
+    {
+      "name": "Hardware Part Number (input: ascii)",
+      "key": "hardware_part_number",
+      "address": 0,
+      "length_bytes": 10,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "Hardware Version Info (input: ascii)",
+      "key": "hardware_version_info",
+      "address": 10,
+      "length_bytes": 3,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "Hardware Supplier Info (input: ascii)",
+      "key": "hardware_supplier_info",
+      "address": 13,
+      "length_bytes": 2,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "ECU Serial Number (input: ascii)",
+      "key": "ecu_serial_number",
+      "address": 15,
+      "length_bytes": 33,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "Aumovio PCB assembly (input: ascii)",
+      "key": "aumovio_pcb_assembly",
+      "address": 48,
+      "length_bytes": 34,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "HW compatibility index (input: ascii)",
+      "key": "hw_compatibility_index",
+      "address": 82,
+      "length_bytes": 3,
+      "encoding": "ascii",
+      "allowed_charset": "printable_ascii",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "KML IRK (input: hex)",
+      "key": "kml_irk",
+      "address": 85,
+      "length_bytes": 16,
+      "encoding": "ascii",
+      "input_format": "hex",
+      "allowed_charset": "regex:[0-9A-Fa-f]*",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "KML Vehicle Bt Address (input: hex)",
+      "key": "kml_vehicle_bt_address",
+      "address": 101,
+      "length_bytes": 6,
+      "encoding": "ascii",
+      "input_format": "hex",
+      "allowed_charset": "regex:[0-9A-Fa-f]*",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    },
+    {
+      "name": "VHL WCC (input: hex)",
+      "key": "vhl_wcc",
+      "address": 107,
+      "length_bytes": 1,
+      "encoding": "ascii",
+      "input_format": "hex",
+      "allowed_charset": "regex:[0-9A-Fa-f]*",
+      "padding": 0,
+      "pad_direction": "right",
+      "trim_rule": "none",
+      "required": true,
+      "default_value": "",
+      "allow_truncate": false
+    }
+  ]
+}
+"""
 
 
 class HexGuiApp:
@@ -20,6 +175,7 @@ class HexGuiApp:
         self.root.title("MB EA L EIS - Sample Parts - EOL Data Generator")
         self.project: Project | None = None
         self.field_vars: dict[str, tk.StringVar] = {}
+        self.field_entries: list[ttk.Entry] = []
 
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
         self.input_hex_path = tk.StringVar(value="")
@@ -73,8 +229,31 @@ class HexGuiApp:
         ttk.Label(footer, text="© Copyright RP 2026").pack(anchor="e")
 
     def _try_load_default_project(self) -> None:
-        if Path(self.project_path.get()).exists():
+        try:
+            payload = json.loads(_EMBEDDED_SAMPLE_PROJECT_JSON)
+            self._apply_project(Project.from_dict(payload), "embedded sample_parts_project.json")
+            self.project_path.set("embedded: sample_parts_project.json")
+            return
+        except Exception:
+            pass
+
+        default_path = self._resolve_default_project_path()
+        if default_path is not None:
+            self.project_path.set(str(default_path))
             self.load_project()
+
+    def _resolve_default_project_path(self) -> Path | None:
+        rel = Path("examples") / "sample_parts_project.json"
+        candidates = [Path.cwd() / rel]
+        if getattr(sys, "frozen", False):
+            candidates.append(Path(sys.executable).resolve().parent / rel)
+        else:
+            candidates.append(Path(__file__).resolve().parents[2] / rel)
+            candidates.append(Path(__file__).resolve().parents[3] / rel)
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        return None
 
     def browse_project(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json"), ("All files", "*")])
@@ -104,29 +283,49 @@ class HexGuiApp:
             return
 
         try:
-            self.project = load_project(str(project_path))
+            project = load_project(str(project_path))
         except Exception as exc:
             messagebox.showerror("Project load error", str(exc))
             return
 
+        self._apply_project(project, str(project_path))
+
+    def _apply_project(self, project: Project, source: str) -> None:
+        self.project = project
+
         for child in self.form_frame.winfo_children():
             child.destroy()
         self.field_vars.clear()
+        self.field_entries.clear()
 
-        for row, field in enumerate(self.project.fields):
+        for row, field in enumerate(project.fields):
             ttk.Label(self.form_frame, text=f"{field.name} ({field.key})").grid(row=row, column=0, sticky="w", pady=2)
             var = tk.StringVar(value=field.default_value or "")
             entry = ttk.Entry(self.form_frame, textvariable=var, width=50)
             entry.grid(row=row, column=1, sticky="ew", padx=4)
+            entry.bind("<Return>", self._on_field_enter)
             ttk.Label(
                 self.form_frame,
                 text=f"addr={field.address:#x}, len={field.length_bytes}, charset={field.allowed_charset}",
             ).grid(row=row, column=2, sticky="w")
             var.trace_add("write", lambda *_args, f=field, v=var, e=entry: self._validate_live(f, v, e))
             self.field_vars[field.key] = var
+            self.field_entries.append(entry)
 
         self.form_frame.columnconfigure(1, weight=1)
-        self.preview_text.insert("end", f"Loaded project: {self.project.name}\n")
+        self.preview_text.insert("end", f"Loaded project: {project.name} ({source})\n")
+
+    def _on_field_enter(self, event: tk.Event) -> str:
+        widget = event.widget
+        try:
+            idx = self.field_entries.index(widget)
+        except ValueError:
+            return "break"
+        if idx + 1 < len(self.field_entries):
+            self.field_entries[idx + 1].focus_set()
+        else:
+            widget.tk_focusNext().focus_set()
+        return "break"
 
     def _validate_live(self, field, var, entry) -> None:
         errors = field.validate_value(var.get())
