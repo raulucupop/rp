@@ -197,6 +197,7 @@ class HexGuiApp:
         ttk.Label(top, text="Readback file:").grid(row=1, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.input_hex_path, width=60).grid(row=1, column=1, sticky="ew")
         ttk.Button(top, text="Browse", command=self.browse_input_hex).grid(row=1, column=2, padx=4)
+        ttk.Button(top, text="Readback", command=self.readback).grid(row=1, column=3, padx=4)
 
         ttk.Label(top, text="Output format:").grid(row=2, column=0, sticky="w")
         fmt = ttk.Combobox(top, textvariable=self.output_format, values=["ihex", "srec"], state="readonly", width=10)
@@ -218,11 +219,12 @@ class HexGuiApp:
         actions.pack(fill=tk.X)
         ttk.Button(actions, text="Preview", command=self.preview).pack(side=tk.LEFT)
         ttk.Button(actions, text="Generate HEX", command=self.generate).pack(side=tk.LEFT, padx=5)
-        ttk.Button(actions, text="Readback", command=self.readback).pack(side=tk.LEFT, padx=5)
         ttk.Button(actions, text="Verify", command=self.run_verify).pack(side=tk.LEFT, padx=5)
 
         self.preview_text = tk.Text(self.root, height=12)
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        self.preview_text.tag_configure("status_pass", foreground="green")
+        self.preview_text.tag_configure("status_fail", foreground="red")
 
         footer = ttk.Frame(self.root, padding=(10, 0, 10, 6))
         footer.pack(fill=tk.X)
@@ -434,9 +436,15 @@ class HexGuiApp:
             messagebox.showerror("Verify error", str(exc))
             return
 
-        report = "\n".join(f"{k}: {v}" for k, v in result.items())
         self.preview_text.delete("1.0", "end")
-        self.preview_text.insert("end", report + "\n")
+        overall = "PASS" if all(state == "PASS" for state in result.values()) else "FAIL"
+        overall_tag = "status_pass" if overall == "PASS" else "status_fail"
+        self.preview_text.insert("end", "Verify result: ")
+        self.preview_text.insert("end", overall + "\n", overall_tag)
+        for key, state in result.items():
+            tag = "status_pass" if state == "PASS" else "status_fail"
+            self.preview_text.insert("end", f"{key}: ")
+            self.preview_text.insert("end", state + "\n", tag)
 
 
 def main() -> int:
