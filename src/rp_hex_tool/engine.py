@@ -32,7 +32,7 @@ def encode_field(field: FieldDef, value: str) -> tuple[bytes, list[str]]:
         if raw.lower().startswith("0x"):
             raw = raw[2:]
         if len(raw) % 2 == 1:
-            raw = "0" + raw
+            raise ValueError(f"{field.key}: must have an even number of hex characters (2 chars = 1 byte)")
         encoded = bytes.fromhex(raw) if raw else b""
     else:
         encoded = value.encode(field.encoding)

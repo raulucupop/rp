@@ -41,7 +41,8 @@ class FieldDef:
                     errors.append("must be valid hex")
                     return errors
                 if len(raw) % 2 == 1:
-                    raw = "0" + raw
+                    errors.append("must have an even number of hex characters (2 chars = 1 byte)")
+                    return errors
                 byte_len = len(raw) // 2
                 if byte_len < self.length_bytes:
                     errors.append(f"must be exactly {self.length_bytes} bytes; got {byte_len}")

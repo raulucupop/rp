@@ -113,13 +113,15 @@ def test_hex_input_uses_byte_length_not_char_length():
         ],
     )
 
-    out_0, _ = generate_hex(project, {"vhl_wcc": "0x0"})
-    mem_0 = parse_memory(out_0)
-    assert mem_0[0x00] == 0x00
-
     out_1, _ = generate_hex(project, {"vhl_wcc": "01"})
     mem_1 = parse_memory(out_1)
     assert mem_1[0x00] == 0x01
+
+    try:
+        generate_hex(project, {"vhl_wcc": "0x0"})
+        assert False, "expected ValueError for odd-length hex input"
+    except ValueError as exc:
+        assert "even number of hex characters" in str(exc)
 
 
 def test_generate_with_shadow_memory_duplicates_payload():
