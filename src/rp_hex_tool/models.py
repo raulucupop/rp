@@ -43,8 +43,13 @@ class FieldDef:
                 if len(raw) % 2 == 1:
                     raw = "0" + raw
                 byte_len = len(raw) // 2
+                if byte_len < self.length_bytes:
+                    errors.append(f"must be exactly {self.length_bytes} bytes; got {byte_len}")
+                    return errors
                 if byte_len > self.length_bytes and not self.allow_truncate:
                     errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
+            elif self.required:
+                errors.append("required")
             return errors
 
         if self.allowed_charset == "alphanumeric" and not re.fullmatch(r"[A-Za-z0-9]*", value):

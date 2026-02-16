@@ -176,6 +176,7 @@ class HexGuiApp:
         self.project: Project | None = None
         self.field_vars: dict[str, tk.StringVar] = {}
         self.field_entries: list[ttk.Entry] = []
+        self.last_verify_result: dict[str, str] | None = None
 
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
         self.input_hex_path = tk.StringVar(value="")
@@ -427,20 +428,72 @@ class HexGuiApp:
         if not self.project:
             return
         if not self.input_hex_path.get():
+            self.preview_text.delete("1.0", "end")
+            self.preview_text.insert("end", "Verify result: ")
+            self.preview_text.insert("end", "FAIL\n", "status_fail")
+            self.preview_text.insert("end", "Reason: Select a readback file first.\n")
             messagebox.showerror("Verify error", "Select a readback file first.")
+            return
+        values = self._collect_values()
+        invalid_fields: dict[str, str] = {}
+        for field in self.project.fields:
+            value = values.get(field.key, "")
+            if field.required and not value:
+                invalid_fields[field.key] = "required"
+                continue
+            errors = field.validate_value(value)
+            if errors:
+                invalid_fields[field.key] = ", ".join(errors)
+        if invalid_fields:
+            result = {field.key: "PASS" for field in self.project.fields}
+            for key in invalid_fields:
+                result[key] = "FAIL"
+            self.preview_text.delete("1.0", "end")
+            self.last_verify_result = result
+            self.preview_text.insert("end", "Verify result: ")
+            self.preview_text.insert("end", "FAIL\n", "status_fail")
+            reason = "; ".join(f"{k}: {v}" for k, v in invalid_fields.items())
+            self.preview_text.insert("end", f"Reason: {reason}\n")
+            for field in self.project.fields:
+                state = result.get(field.key, "FAIL")
+                tag = "status_pass" if state == "PASS" else "status_fail"
+                self.preview_text.insert("end", f"{field.key}: ")
+                self.preview_text.insert("end", state + "\n", tag)
+            messagebox.showerror("Verify error", reason)
             return
         try:
             text = Path(self.input_hex_path.get()).read_text(encoding="utf-8")
-            result = verify(self.project, self._collect_values(), text)
+            result = verify(self.project, values, text)
         except Exception as exc:
+            self.preview_text.delete("1.0", "end")
+            self.preview_text.insert("end", "Verify result: ")
+            self.preview_text.insert("end", "FAIL\n", "status_fail")
+            self.preview_text.insert("end", f"Reason: {exc}\n")
+            fallback: dict[str, str] = dict(self.last_verify_result or {})
+            if self.project:
+                for field in self.project.fields:
+                    fallback.setdefault(field.key, "FAIL")
+            failing_key = str(exc).split(":", 1)[0].strip()
+            if failing_key:
+                fallback[failing_key] = "FAIL"
+            for field in self.project.fields:
+                state = fallback.get(field.key, "FAIL")
+                tag = "status_pass" if state == "PASS" else "status_fail"
+                self.preview_text.insert("end", f"{field.key}: ")
+                self.preview_text.insert("end", state + "\n", tag)
             messagebox.showerror("Verify error", str(exc))
             return
 
         self.preview_text.delete("1.0", "end")
+        self.last_verify_result = result
         overall = "PASS" if all(state == "PASS" for state in result.values()) else "FAIL"
         overall_tag = "status_pass" if overall == "PASS" else "status_fail"
         self.preview_text.insert("end", "Verify result: ")
         self.preview_text.insert("end", overall + "\n", overall_tag)
+        if overall == "FAIL":
+            failed_keys = [key for key, state in result.items() if state == "FAIL"]
+            if failed_keys:
+                self.preview_text.insert("end", "Reason: mismatch in readback for " + ", ".join(failed_keys) + "\n")
         for key, state in result.items():
             tag = "status_pass" if state == "PASS" else "status_fail"
             self.preview_text.insert("end", f"{key}: ")
