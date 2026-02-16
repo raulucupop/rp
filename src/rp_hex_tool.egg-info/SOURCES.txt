@@ -11,6 +11,7 @@ src/rp_hex_tool.egg-info/SOURCES.txt
 src/rp_hex_tool.egg-info/dependency_links.txt
 src/rp_hex_tool.egg-info/entry_points.txt
 src/rp_hex_tool.egg-info/top_level.txt
+tests/test_cli.py
 tests/test_engine.py
 tests/test_hexfile.py
 tests/test_sample_project.py
