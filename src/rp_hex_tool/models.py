@@ -68,6 +68,15 @@ class FieldDef:
             errors.append(f"encoding error: {exc}")
             return errors
 
+        if (
+            self.input_format == "ascii"
+            and self.allowed_charset == "printable_ascii"
+            and self.padding == 0x00
+            and self.trim_rule == "none"
+            and len(encoded) < self.length_bytes
+        ):
+            errors.append(f"must be exactly {self.length_bytes} bytes; got {len(encoded)}")
+
         if len(encoded) > self.length_bytes and not self.allow_truncate:
             errors.append(f"max {self.length_bytes} bytes; got {len(encoded)}")
         return errors

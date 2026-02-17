@@ -136,3 +136,29 @@ def test_generate_with_shadow_memory_duplicates_payload():
     for i, b in enumerate(serial_bytes):
         assert mem[0x10010 + i] == b
         assert mem[0x10010 + shadow_offset + i] == b
+
+
+def test_printable_ascii_with_null_padding_and_no_trim_rejects_too_short():
+    project = Project(
+        schemaVersion=1,
+        name="strict-ascii",
+        fields=[
+            FieldDef(
+                name="Part",
+                key="part",
+                address=0x00,
+                length_bytes=4,
+                input_format="ascii",
+                allowed_charset="printable_ascii",
+                padding=0x00,
+                trim_rule="none",
+                required=True,
+            )
+        ],
+    )
+
+    try:
+        generate_hex(project, {"part": "AB"})
+        assert False, "expected ValueError for too-short printable ASCII input"
+    except ValueError as exc:
+        assert "must be exactly 4 bytes; got 2" in str(exc)
