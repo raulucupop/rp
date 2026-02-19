@@ -113,15 +113,50 @@ def test_hex_input_uses_byte_length_not_char_length():
         ],
     )
 
-    out_1, _ = generate_hex(project, {"vhl_wcc": "01"})
+    out_1, _ = generate_hex(project, {"vhl_wcc": "03"})
     mem_1 = parse_memory(out_1)
-    assert mem_1[0x00] == 0x01
+    assert mem_1[0x00] == 0x03
 
     try:
         generate_hex(project, {"vhl_wcc": "0x0"})
         assert False, "expected ValueError for odd-length hex input"
     except ValueError as exc:
         assert "even number of hex characters" in str(exc)
+
+    try:
+        generate_hex(project, {"vhl_wcc": "01"})
+        assert False, "expected ValueError for non-fixed VHL WCC value"
+    except ValueError as exc:
+        assert "must be fixed to 03" in str(exc)
+
+
+def test_kml_vehicle_bt_address_requires_two_most_significant_bits_set():
+    project = Project(
+        schemaVersion=1,
+        name="bt-address",
+        record_length=16,
+        fields=[
+            FieldDef(
+                name="KML Vehicle Bt Address",
+                key="kml_vehicle_bt_address",
+                address=0x00,
+                length_bytes=6,
+                input_format="hex",
+                trim_rule="none",
+                required=True,
+            )
+        ],
+    )
+
+    out_ok, _ = generate_hex(project, {"kml_vehicle_bt_address": "C00102030405"})
+    mem_ok = parse_memory(out_ok)
+    assert mem_ok[0x00] == 0xC0
+
+    try:
+        generate_hex(project, {"kml_vehicle_bt_address": "3F0102030405"})
+        assert False, "expected ValueError for invalid BT address top bits"
+    except ValueError as exc:
+        assert "2 most significant bits" in str(exc)
 
 
 def test_generate_with_shadow_memory_duplicates_payload():

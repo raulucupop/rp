@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import secrets
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -159,7 +160,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "03",
       "allow_truncate": false
     }
   ]
@@ -301,9 +302,26 @@ class HexGuiApp:
 
         for row, field in enumerate(project.fields):
             ttk.Label(self.form_frame, text=f"{field.name} ({field.key})").grid(row=row, column=0, sticky="w", pady=2)
-            var = tk.StringVar(value=field.default_value or "")
+            initial_value = field.default_value or ""
+            if field.key == "vhl_wcc":
+                initial_value = "03"
+            var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(self.form_frame, textvariable=var, width=50)
             entry.grid(row=row, column=1, sticky="ew", padx=4)
+            if field.key == "vhl_wcc":
+                entry.configure(state="readonly")
+            if field.key == "kml_vehicle_bt_address":
+                ttk.Button(
+                    self.form_frame,
+                    text="Random",
+                    command=self._randomize_kml_vehicle_bt_address,
+                ).grid(row=row, column=3, sticky="w", padx=(4, 0))
+            if field.key == "kml_irk":
+                ttk.Button(
+                    self.form_frame,
+                    text="Random",
+                    command=self._randomize_kml_irk,
+                ).grid(row=row, column=3, sticky="w", padx=(4, 0))
             entry.bind("<Return>", self._on_field_enter)
             ttk.Label(
                 self.form_frame,
@@ -315,6 +333,21 @@ class HexGuiApp:
 
         self.form_frame.columnconfigure(1, weight=1)
         self.preview_text.insert("end", f"Loaded project: {project.name} ({source})\n")
+
+    def _set_field_value(self, key: str, value: str) -> None:
+        var = self.field_vars.get(key)
+        if var is None:
+            return
+        var.set(value.upper())
+
+    def _randomize_kml_vehicle_bt_address(self) -> None:
+        first_byte = 0xC0 | secrets.randbelow(0x40)
+        tail = secrets.token_bytes(5)
+        value = bytes([first_byte]) + tail
+        self._set_field_value("kml_vehicle_bt_address", value.hex().upper())
+
+    def _randomize_kml_irk(self) -> None:
+        self._set_field_value("kml_irk", secrets.token_bytes(16).hex().upper())
 
     def _on_field_enter(self, event: tk.Event) -> str:
         widget = event.widget

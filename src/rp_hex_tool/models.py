@@ -49,6 +49,12 @@ class FieldDef:
                     return errors
                 if byte_len > self.length_bytes and not self.allow_truncate:
                     errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
+                if self.key == "vhl_wcc" and raw.upper() != "03":
+                    errors.append("must be fixed to 03")
+                if self.key == "kml_vehicle_bt_address":
+                    first_byte = int(raw[:2], 16)
+                    if (first_byte & 0xC0) != 0xC0:
+                        errors.append("the 2 most significant bits of byte 0 must be 1")
             elif self.required:
                 errors.append("required")
             return errors
