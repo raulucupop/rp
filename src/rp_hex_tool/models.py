@@ -11,7 +11,7 @@ PaddingByte = int
 Encoding = Literal["ascii", "utf-8"]
 PadDirection = Literal["left", "right"]
 TrimRule = Literal["strip_padding", "stop_at_0x00", "none"]
-InputFormat = Literal["ascii", "hex"]
+InputFormat = Literal["ascii", "hex", "dec"]
 
 
 @dataclass
@@ -51,12 +51,47 @@ class FieldDef:
                     errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
                 if self.key == "vhl_wcc" and raw.upper() != "03":
                     errors.append("must be fixed to 03")
+                if self.key == "hardware_supplier_info" and raw.upper() != "013B":
+                    errors.append("must be fixed to 013B")
                 if self.key == "kml_vehicle_bt_address":
                     first_byte = int(raw[:2], 16)
                     if (first_byte & 0xC0) != 0xC0:
                         errors.append("the 2 most significant bits of byte 0 must be 1")
             elif self.required:
                 errors.append("required")
+            return errors
+        if self.input_format == "dec":
+            raw = value.strip()
+            if not raw:
+                if self.required:
+                    errors.append("required")
+                return errors
+            if self.key == "hardware_version_info":
+                tokens = raw.split()
+                if len(tokens) != self.length_bytes:
+                    errors.append(f"must contain exactly {self.length_bytes} decimal values separated by spaces")
+                    return errors
+                for token in tokens:
+                    if not token.isdigit():
+                        errors.append("must contain decimal integers only")
+                        return errors
+                    if len(token) > 2:
+                        errors.append("each decimal value must be 1 or 2 digits")
+                        return errors
+                return errors
+            if not raw.isdigit():
+                errors.append("must be a decimal integer")
+                return errors
+            if self.allowed_charset.startswith("regex:"):
+                pattern = self.allowed_charset.removeprefix("regex:")
+                if not re.fullmatch(pattern, raw):
+                    errors.append(f"does not match regex {pattern}")
+                    return errors
+            max_value = (1 << (8 * self.length_bytes)) - 1
+            dec_value = int(raw, 10)
+            if dec_value > max_value:
+                errors.append(f"max value for {self.length_bytes} bytes is {max_value}")
+                return errors
             return errors
 
         if self.allowed_charset == "alphanumeric" and not re.fullmatch(r"[A-Za-z0-9]*", value):

@@ -45,35 +45,37 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "5819019601",
       "allow_truncate": false
     },
     {
-      "name": "Hardware Version Info (input: ascii)",
+      "name": "Hardware Version Info (input: dec)",
       "key": "hardware_version_info",
       "address": 10,
       "length_bytes": 3,
       "encoding": "ascii",
-      "allowed_charset": "printable_ascii",
+      "input_format": "dec",
+      "allowed_charset": "regex:[0-9]{1,2}( [0-9]{1,2}){2}",
       "padding": 0,
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "25 15 00",
       "allow_truncate": false
     },
     {
-      "name": "Hardware Supplier Info (input: ascii)",
+      "name": "Hardware Supplier Info (input: hex, fixed)",
       "key": "hardware_supplier_info",
       "address": 13,
       "length_bytes": 2,
       "encoding": "ascii",
-      "allowed_charset": "printable_ascii",
+      "input_format": "hex",
+      "allowed_charset": "regex:[0-9A-Fa-f]*",
       "padding": 0,
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "013B",
       "allow_truncate": false
     },
     {
@@ -101,21 +103,22 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "AAA2910260100",
       "allow_truncate": false
     },
     {
-      "name": "HW compatibility index (input: ascii)",
+      "name": "HW compatibility index (input: hex)",
       "key": "hw_compatibility_index",
       "address": 82,
       "length_bytes": 3,
       "encoding": "ascii",
-      "allowed_charset": "printable_ascii",
+      "input_format": "hex",
+      "allowed_charset": "regex:[0-9A-Fa-f]*",
       "padding": 0,
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "",
+      "default_value": "000001",
       "allow_truncate": false
     },
     {
@@ -305,10 +308,12 @@ class HexGuiApp:
             initial_value = field.default_value or ""
             if field.key == "vhl_wcc":
                 initial_value = "03"
+            if field.key == "hardware_supplier_info":
+                initial_value = "013B"
             var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(self.form_frame, textvariable=var, width=50)
             entry.grid(row=row, column=1, sticky="ew", padx=4)
-            if field.key == "vhl_wcc":
+            if field.key in ("vhl_wcc", "hardware_supplier_info"):
                 entry.configure(state="readonly")
             if field.key == "kml_vehicle_bt_address":
                 ttk.Button(
@@ -375,11 +380,10 @@ class HexGuiApp:
         return 0x02000000 if self.shadow_memory.get() else None
 
     def _ask_output_path(self) -> str:
+        default_ext = ".hex"
         if self.output_format.get() == "srec":
-            default_ext = ".srec"
-            filetypes = [("S-record files", "*.srec"), ("HEX files", "*.hex"), ("All files", "*")]
+            filetypes = [("HEX files", "*.hex"), ("S-record files", "*.srec"), ("All files", "*")]
         else:
-            default_ext = ".hex"
             filetypes = [("HEX files", "*.hex"), ("S-record files", "*.srec"), ("All files", "*")]
         return filedialog.asksaveasfilename(defaultextension=default_ext, filetypes=filetypes)
 

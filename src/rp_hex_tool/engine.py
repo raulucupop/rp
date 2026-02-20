@@ -34,6 +34,13 @@ def encode_field(field: FieldDef, value: str) -> tuple[bytes, list[str]]:
         if len(raw) % 2 == 1:
             raise ValueError(f"{field.key}: must have an even number of hex characters (2 chars = 1 byte)")
         encoded = bytes.fromhex(raw) if raw else b""
+    elif field.input_format == "dec":
+        raw = value.strip()
+        if field.key == "hardware_version_info":
+            encoded = bytes(int(token, 10) for token in raw.split())
+        else:
+            dec_value = int(raw, 10) if raw else 0
+            encoded = dec_value.to_bytes(field.length_bytes, byteorder="big")
     else:
         encoded = value.encode(field.encoding)
 
@@ -58,6 +65,10 @@ def decode_field(field: FieldDef, raw: bytes) -> str:
         raw = raw.rstrip(bytes([field.padding])) if field.pad_direction == "right" else raw.lstrip(bytes([field.padding]))
     if field.input_format == "hex":
         return raw.hex().upper()
+    if field.input_format == "dec":
+        if field.key == "hardware_version_info":
+            return " ".join(str(b) for b in raw)
+        return str(int.from_bytes(raw, byteorder="big"))
     return raw.decode(field.encoding, errors="replace")
 
 

@@ -197,3 +197,74 @@ def test_printable_ascii_with_null_padding_and_no_trim_rejects_too_short():
         assert False, "expected ValueError for too-short printable ASCII input"
     except ValueError as exc:
         assert "must be exactly 4 bytes; got 2" in str(exc)
+
+
+def test_hardware_version_info_dec_encodes_decimal_values_per_byte():
+    project = Project(
+        schemaVersion=1,
+        name="hw-version-dec",
+        fields=[
+            FieldDef(
+                name="Hardware Version Info",
+                key="hardware_version_info",
+                address=0x10,
+                length_bytes=3,
+                input_format="dec",
+                allowed_charset="regex:[0-9]{1,2}( [0-9]{1,2}){2}",
+                trim_rule="none",
+                required=True,
+            )
+        ],
+    )
+
+    out, _ = generate_hex(project, {"hardware_version_info": "25 46 1"})
+    mem = parse_memory(out)
+    assert mem[0x10] == 0x19
+    assert mem[0x11] == 0x2E
+    assert mem[0x12] == 0x01
+
+    back, status = read_fields_from_memory(project, mem)
+    assert status["hardware_version_info"] == "ok"
+    assert back["hardware_version_info"] == "25 46 1"
+
+    for bad in ("15", "1 2", "100 46 1", "AA 46 1"):
+        try:
+            generate_hex(project, {"hardware_version_info": bad})
+            assert False, "expected ValueError for invalid hardware_version_info decimal-byte input"
+        except ValueError as exc:
+            assert (
+                "does not match regex [0-9]{1,2}( [0-9]{1,2}){2}" in str(exc)
+                or "must contain exactly 3 decimal values separated by spaces" in str(exc)
+                or "each decimal value must be 1 or 2 digits" in str(exc)
+                or "must contain decimal integers only" in str(exc)
+            )
+
+
+def test_hardware_supplier_info_is_fixed_to_013b():
+    project = Project(
+        schemaVersion=1,
+        name="hw-supplier-fixed",
+        fields=[
+            FieldDef(
+                name="Hardware Supplier Info",
+                key="hardware_supplier_info",
+                address=0x20,
+                length_bytes=2,
+                input_format="hex",
+                trim_rule="none",
+                required=True,
+                default_value="013B",
+            )
+        ],
+    )
+
+    out_ok, _ = generate_hex(project, {"hardware_supplier_info": "013B"})
+    mem_ok = parse_memory(out_ok)
+    assert mem_ok[0x20] == 0x01
+    assert mem_ok[0x21] == 0x3B
+
+    try:
+        generate_hex(project, {"hardware_supplier_info": "ABCD"})
+        assert False, "expected ValueError for non-fixed supplier info"
+    except ValueError as exc:
+        assert "must be fixed to 013B" in str(exc)
