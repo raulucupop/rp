@@ -60,7 +60,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "25 15 00",
+      "default_value": "25 46 01",
       "allow_truncate": false
     },
     {
@@ -103,7 +103,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "AAA2910260100",
+      "default_value": "AAA2910260100000000000000000000000",
       "allow_truncate": false
     },
     {
