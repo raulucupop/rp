@@ -183,7 +183,6 @@ class HexGuiApp:
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
         self.input_hex_path = tk.StringVar(value="")
         self.output_format = tk.StringVar(value="ihex")
-        self.shadow_memory = tk.BooleanVar(value=False)
 
         self._build_layout()
         self._try_load_default_project()
@@ -207,10 +206,9 @@ class HexGuiApp:
         fmt.grid(row=2, column=1, sticky="w")
         fmt.current(0)
 
-        ttk.Checkbutton(
+        ttk.Label(
             top,
-            text="Double the data to fill the shadow memory too",
-            variable=self.shadow_memory,
+            text="Double the data to fill the shadow memory too: Yes",
         ).grid(row=3, column=0, columnspan=2, sticky="w")
 
         top.columnconfigure(1, weight=1)
@@ -376,8 +374,22 @@ class HexGuiApp:
     def _collect_values(self) -> dict[str, str]:
         return {key: var.get() for key, var in self.field_vars.items()}
 
+    def _validate_fields(self, values: dict[str, str]) -> dict[str, str]:
+        invalid_fields: dict[str, str] = {}
+        if not self.project:
+            return invalid_fields
+        for field in self.project.fields:
+            value = values.get(field.key, "")
+            if field.required and not value:
+                invalid_fields[field.key] = "required"
+                continue
+            errors = field.validate_value(value)
+            if errors:
+                invalid_fields[field.key] = ", ".join(errors)
+        return invalid_fields
+
     def _shadow_offset(self) -> int | None:
-        return 0x02000000 if self.shadow_memory.get() else None
+        return 0x02000000
 
     def _ask_output_path(self) -> str:
         default_ext = ".hex"
@@ -410,6 +422,16 @@ class HexGuiApp:
         if not self.project:
             return
         values = self._collect_values()
+        invalid_fields = self._validate_fields(values)
+        if invalid_fields:
+            reason = "; ".join(f"{k}: {v}" for k, v in invalid_fields.items())
+            self.preview_text.delete("1.0", "end")
+            self.preview_text.insert("end", "Verify result: ")
+            self.preview_text.insert("end", "FAIL\n", "status_fail")
+            self.preview_text.insert("end", f"Reason: {reason}\n")
+            messagebox.showerror("Generate blocked", f"Verify failed. HEX was not generated.\n{reason}")
+            return
+
         output_path = self._ask_output_path()
         if not output_path:
             return
@@ -463,15 +485,7 @@ class HexGuiApp:
         if not self.project:
             return
         values = self._collect_values()
-        invalid_fields: dict[str, str] = {}
-        for field in self.project.fields:
-            value = values.get(field.key, "")
-            if field.required and not value:
-                invalid_fields[field.key] = "required"
-                continue
-            errors = field.validate_value(value)
-            if errors:
-                invalid_fields[field.key] = ", ".join(errors)
+        invalid_fields = self._validate_fields(values)
         if invalid_fields:
             result = {field.key: "PASS" for field in self.project.fields}
             for key in invalid_fields:
