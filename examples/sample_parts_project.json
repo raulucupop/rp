@@ -74,7 +74,7 @@
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "AAA2910260100000000000000000000000",
+      "default_value": "AAA2910270100000000000000000000000",
       "allow_truncate": false
     },
     {
@@ -134,7 +134,7 @@
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "03",
+      "default_value": "01",
       "allow_truncate": false
     }
   ]

@@ -49,8 +49,8 @@ class FieldDef:
                     return errors
                 if byte_len > self.length_bytes and not self.allow_truncate:
                     errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
-                if self.key == "vhl_wcc" and raw.upper() != "03":
-                    errors.append("must be fixed to 03")
+                if self.key == "vhl_wcc" and raw.upper() != "01":
+                    errors.append("must be fixed to 01")
                 if self.key == "hardware_supplier_info" and raw.upper() != "013B":
                     errors.append("must be fixed to 013B")
                 if self.key == "kml_vehicle_bt_address":

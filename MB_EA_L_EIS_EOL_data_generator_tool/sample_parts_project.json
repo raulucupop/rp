@@ -131,7 +131,7 @@
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "03",
+      "default_value": "01",
       "allow_truncate": false
     }
   ]

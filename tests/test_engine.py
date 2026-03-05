@@ -113,9 +113,9 @@ def test_hex_input_uses_byte_length_not_char_length():
         ],
     )
 
-    out_1, _ = generate_hex(project, {"vhl_wcc": "03"})
+    out_1, _ = generate_hex(project, {"vhl_wcc": "01"})
     mem_1 = parse_memory(out_1)
-    assert mem_1[0x00] == 0x03
+    assert mem_1[0x00] == 0x01
 
     try:
         generate_hex(project, {"vhl_wcc": "0x0"})
@@ -124,10 +124,10 @@ def test_hex_input_uses_byte_length_not_char_length():
         assert "even number of hex characters" in str(exc)
 
     try:
-        generate_hex(project, {"vhl_wcc": "01"})
+        generate_hex(project, {"vhl_wcc": "03"})
         assert False, "expected ValueError for non-fixed VHL WCC value"
     except ValueError as exc:
-        assert "must be fixed to 03" in str(exc)
+        assert "must be fixed to 01" in str(exc)
 
 
 def test_kml_vehicle_bt_address_requires_two_most_significant_bits_set():

@@ -103,7 +103,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "AAA2910260100000000000000000000000",
+      "default_value": "AAA2910270100000000000000000000000",
       "allow_truncate": false
     },
     {
@@ -163,7 +163,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "03",
+      "default_value": "01",
       "allow_truncate": false
     }
   ]
@@ -305,7 +305,7 @@ class HexGuiApp:
             ttk.Label(self.form_frame, text=f"{field.name} ({field.key})").grid(row=row, column=0, sticky="w", pady=2)
             initial_value = field.default_value or ""
             if field.key == "vhl_wcc":
-                initial_value = "03"
+                initial_value = "01"
             if field.key == "hardware_supplier_info":
                 initial_value = "013B"
             var = tk.StringVar(value=initial_value)
