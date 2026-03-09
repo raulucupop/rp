@@ -35,7 +35,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
   "template_hex": null,
   "fields": [
     {
-      "name": "Hardware Part Number (input: ascii)",
+      "name": "Mercedes SG IDENT",
       "key": "hardware_part_number",
       "address": 0,
       "length_bytes": 10,
@@ -183,6 +183,7 @@ class HexGuiApp:
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
         self.input_hex_path = tk.StringVar(value="")
         self.output_format = tk.StringVar(value="ihex")
+        self.version_text = tk.StringVar(value="Version 001 of 06.03.2026")
 
         self._build_layout()
         self._try_load_default_project()
@@ -210,6 +211,7 @@ class HexGuiApp:
             top,
             text="Double the data to fill the shadow memory too: Yes",
         ).grid(row=3, column=0, columnspan=2, sticky="w")
+        ttk.Label(top, textvariable=self.version_text).grid(row=3, column=3, sticky="e")
 
         top.columnconfigure(1, weight=1)
 
