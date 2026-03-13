@@ -29,7 +29,7 @@ except ImportError:
 _EMBEDDED_SAMPLE_PROJECT_JSON = """
 {
   "schemaVersion": 1,
-  "name": "Sample HW Layout",
+  "name": "Sample Parts SN",
   "record_length": 16,
   "memory_limit": 131072,
   "template_hex": null,
@@ -75,7 +75,7 @@ _EMBEDDED_SAMPLE_PROJECT_JSON = """
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "013B",
+      "default_value": "3B01",
       "allow_truncate": false
     },
     {
@@ -183,7 +183,7 @@ class HexGuiApp:
         self.project_path = tk.StringVar(value="examples/sample_parts_project.json")
         self.input_hex_path = tk.StringVar(value="")
         self.output_format = tk.StringVar(value="ihex")
-        self.version_text = tk.StringVar(value="Version 001 of 06.03.2026")
+        self.version_text = tk.StringVar(value="Version 001 of 13.03.2026")
 
         self._build_layout()
         self._try_load_default_project()
@@ -308,12 +308,10 @@ class HexGuiApp:
             initial_value = field.default_value or ""
             if field.key == "vhl_wcc":
                 initial_value = "01"
-            if field.key == "hardware_supplier_info":
-                initial_value = "013B"
             var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(self.form_frame, textvariable=var, width=50)
             entry.grid(row=row, column=1, sticky="ew", padx=4)
-            if field.key in ("vhl_wcc", "hardware_supplier_info"):
+            if field.key == "vhl_wcc":
                 entry.configure(state="readonly")
             if field.key == "kml_vehicle_bt_address":
                 ttk.Button(
@@ -527,3 +525,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

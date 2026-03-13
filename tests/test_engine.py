@@ -240,7 +240,7 @@ def test_hardware_version_info_dec_encodes_decimal_values_per_byte():
             )
 
 
-def test_hardware_supplier_info_is_fixed_to_013b():
+def test_hardware_supplier_info_is_fixed_to_013b_or_3b01():
     project = Project(
         schemaVersion=1,
         name="hw-supplier-fixed",
@@ -263,8 +263,16 @@ def test_hardware_supplier_info_is_fixed_to_013b():
     assert mem_ok[0x20] == 0x01
     assert mem_ok[0x21] == 0x3B
 
+    out_ok2, _ = generate_hex(project, {"hardware_supplier_info": "3B01"})
+    mem_ok2 = parse_memory(out_ok2)
+    assert mem_ok2[0x20] == 0x3B
+    assert mem_ok2[0x21] == 0x01
+
     try:
         generate_hex(project, {"hardware_supplier_info": "ABCD"})
         assert False, "expected ValueError for non-fixed supplier info"
     except ValueError as exc:
-        assert "must be fixed to 013B" in str(exc)
+        assert "must be fixed to 013B or 3B01" in str(exc)
+
+
+

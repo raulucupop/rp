@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "name": "Sample HW Layout",
+  "name": "Sample Parts SN",
   "record_length": 16,
   "memory_limit": 131072,
   "template_hex": null,
@@ -46,7 +46,7 @@
       "pad_direction": "right",
       "trim_rule": "none",
       "required": true,
-      "default_value": "013B",
+      "default_value": "3B01",
       "allow_truncate": false
     },
     {

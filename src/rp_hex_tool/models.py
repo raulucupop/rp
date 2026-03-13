@@ -51,8 +51,8 @@ class FieldDef:
                     errors.append(f"max {self.length_bytes} bytes; got {byte_len}")
                 if self.key == "vhl_wcc" and raw.upper() != "01":
                     errors.append("must be fixed to 01")
-                if self.key == "hardware_supplier_info" and raw.upper() != "013B":
-                    errors.append("must be fixed to 013B")
+                if self.key == "hardware_supplier_info" and raw.upper() not in ("013B", "3B01"):
+                    errors.append("must be fixed to 013B or 3B01")
                 if self.key == "kml_vehicle_bt_address":
                     first_byte = int(raw[:2], 16)
                     if (first_byte & 0xC0) != 0xC0:
@@ -207,3 +207,6 @@ def load_json(path: str | Path) -> dict[str, Any]:
 
 def save_json(path: str | Path, payload: dict[str, Any]) -> None:
     Path(path).write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+
